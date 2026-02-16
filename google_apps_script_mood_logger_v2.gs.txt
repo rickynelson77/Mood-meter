@@ -1,0 +1,185 @@
+/**
+ * TrueGrit Mood Meter Logger + Dashboard (Google Apps Script)
+ *
+ * Sheet tab: "Log"
+ * Columns:
+ * Timestamp (ISO) | Local Date | Person | Self Mood | Other Person | Other Mood Guess | TZ
+ *
+ * Deploy as Web App (execute as Me).
+ * Access: Anyone with the link (or your preference).
+ */
+
+const SHEET_NAME = "Log";
+
+// Mood -> numeric score (for trends)
+const MOOD_SCORE = {
+  "Locked In": 1,
+  "Proceed With Caution": 2,
+  "System Updating…": 3,
+  "Enter At Your Own Risk": 4,
+  "Spicy Mode Activated 🌶️": 5
+};
+
+function ensureSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SHEET_NAME);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_NAME);
+    sh.appendRow(["Timestamp (ISO)","Local Date","Person","Self Mood","Other Person","Other Mood Guess","TZ"]);
+  }
+  return sh;
+}
+
+function doPost(e) {
+  try {
+    const sh = ensureSheet_();
+    const raw = e.postData && e.postData.contents ? e.postData.contents : "";
+    const data = JSON.parse(raw);
+
+    const ts = data.timestamp || new Date().toISOString();
+    const tz = data.tz || Session.getScriptTimeZone();
+    const localDate = Utilities.formatDate(new Date(ts), tz, "yyyy-MM-dd");
+
+    sh.appendRow([
+      ts,
+      localDate,
+      data.person || "",
+      data.self_mood || "",
+      data.other_person || "",
+      data.other_mood_guess || "",
+      tz
+    ]);
+
+    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.TEXT);
+  } catch (err) {
+    return ContentService.createTextOutput("ERROR: " + err).setMimeType(ContentService.MimeType.TEXT);
+  }
+}
+
+function doGet(e) {
+  // Dashboard JSON for the viewer page
+  const params = (e && e.parameter) ? e.parameter : {};
+  const action = params.action || "ping";
+
+  if (action === "dashboard") {
+    const days = Math.min(parseInt(params.days || "14", 10) || 14, 60);
+    const out = buildDashboard_(days);
+
+    // Return JSON + allow CORS
+    const txt = ContentService.createTextOutput(JSON.stringify(out));
+    txt.setMimeType(ContentService.MimeType.JSON);
+
+    // Best-effort CORS headers (Apps Script supports these on V8)
+    try {
+      txt.setHeader("Access-Control-Allow-Origin", "*");
+      txt.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+      txt.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    } catch (e2) {}
+
+    return txt;
+  }
+
+  return ContentService.createTextOutput("TrueGrit Mood Meter endpoint is live.")
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
+function buildDashboard_(days) {
+  const sh = ensureSheet_();
+  const values = sh.getDataRange().getValues();
+  if (values.length < 2) {
+    return { today: {}, history: {} };
+  }
+
+  const headers = values[0];
+  const rows = values.slice(1);
+
+  // Determine "today" by script TZ
+  const tz = Session.getScriptTimeZone();
+  const today = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
+
+  // Helper: normalize names to keys
+  const keyFor = (name) => {
+    const n = (name || "").toString().trim().toLowerCase();
+    if (n === "ricky lee" || n === "rickylee" || n === "ricky_lee") return "ricky_lee";
+    if (n === "matthew") return "matthew";
+    return n.replace(/\s+/g, "_");
+  };
+
+  // Pick latest entry per person for today
+  const latestToday = {};
+  rows.forEach(r => {
+    const ts = r[0];
+    const localDate = r[1];
+    const person = r[2];
+    const selfMood = r[3];
+    const otherPerson = r[4];
+    const otherGuess = r[5];
+    if (localDate !== today) return;
+
+    const k = keyFor(person);
+    const prev = latestToday[k];
+    if (!prev || (ts && prev.timestamp < ts)) {
+      latestToday[k] = {
+        timestamp: ts,
+        person: person,
+        self_mood: selfMood,
+        other_person: otherPerson,
+        other_mood_guess: otherGuess
+      };
+    }
+  });
+
+  // History: last N distinct dates with self mood score (per person)
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - (days-1));
+  const cutoffStr = Utilities.formatDate(cutoff, tz, "yyyy-MM-dd");
+
+  const hist = {
+    ricky_lee_self: [],
+    matthew_self: []
+  };
+
+  // Map date -> latest score that day
+  const datePersonLatest = {}; // key: personKey|date -> {ts, score}
+  rows.forEach(r => {
+    const ts = r[0];
+    const localDate = r[1];
+    const person = r[2];
+    const selfMood = r[3];
+
+    if (!localDate || localDate < cutoffStr) return;
+
+    const pk = keyFor(person);
+    const score = MOOD_SCORE[selfMood] || null;
+    if (score === null) return;
+
+    const mapKey = pk + "|" + localDate;
+    const prev = datePersonLatest[mapKey];
+    if (!prev || (ts && prev.ts < ts)) {
+      datePersonLatest[mapKey] = { ts: ts, score: score };
+    }
+  });
+
+  // Build ordered date list for the window
+  const dates = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(cutoff);
+    d.setDate(cutoff.getDate() + i);
+    dates.push(Utilities.formatDate(d, tz, "yyyy-MM-dd"));
+  }
+
+  dates.forEach(date => {
+    const rl = datePersonLatest["ricky_lee|" + date];
+    const m = datePersonLatest["matthew|" + date];
+    if (rl) hist.ricky_lee_self.push({ date: date, score: rl.score });
+    if (m) hist.matthew_self.push({ date: date, score: m.score });
+  });
+
+  return {
+    today: {
+      ricky_lee: latestToday["ricky_lee"] || null,
+      matthew: latestToday["matthew"] || null
+    },
+    history: hist
+  };
+}

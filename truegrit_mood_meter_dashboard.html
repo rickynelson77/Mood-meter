@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TrueGrit Mood Meter — Dashboard</title>
+  <style>
+    :root{
+      --bg:#0b0b0b; --ink:#eaeaea; --muted:#b9b9b9; --line:#2a2a2a;
+      --card:#121212;
+      --green:#2ecc71; --yellow:#f1c40f; --orange:#e67e22; --red:#e74c3c; --black:#3a3a3a;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(1200px 700px at 20% 0%, #1b1b1b, var(--bg));
+         color:var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+    .wrap{max-width:980px;margin:0 auto;padding:22px 14px 40px;}
+    .brand{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
+    .logo{width:44px;height:44px;border:1px solid #2b2b2b;border-radius:10px;display:grid;place-items:center;background:#0f0f0f;font-weight:900;letter-spacing:1px;}
+    h1{font-size:18px;margin:0;text-transform:uppercase;letter-spacing:2px;}
+    .sub{margin:4px 0 0;color:var(--muted);font-size:12px;line-height:1.35;}
+    .pill{font-size:11px;color:#111;font-weight:900;padding:6px 10px;border-radius:999px;background:#fff;letter-spacing:1px;text-transform:uppercase;}
+    .grid{display:grid;grid-template-columns:1fr;gap:14px;}
+    @media (min-width:860px){.grid{grid-template-columns:1fr 1fr;}}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+          border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:16px;box-shadow:0 10px 26px rgba(0,0,0,.35);}
+    .title{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:10px;}
+    .name{font-size:20px;font-weight:900;letter-spacing:2px;text-transform:uppercase;}
+    .date{font-size:12px;color:var(--muted)}
+    .row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.18);margin-top:10px;}
+    .dot{width:18px;height:18px;border-radius:999px;border:2px solid rgba(255,255,255,.25);}
+    .label{font-weight:900;letter-spacing:.3px;}
+    .desc{color:var(--muted);font-size:12px;margin-top:2px;}
+    .stack{display:flex;flex-direction:column;}
+    .mini{font-size:11px;color:var(--muted)}
+    .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px;}
+    button{appearance:none;border:1px solid rgba(255,255,255,.16);background:#141414;color:var(--ink);
+           padding:10px 12px;border-radius:12px;font-weight:900;letter-spacing:.5px;cursor:pointer;}
+    button:hover{border-color:rgba(255,255,255,.28)}
+    .ok{color:#7CFC90}
+    .bad{color:#ff8f8f}
+    .spark{margin-top:12px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;}
+    svg{width:100%;height:70px;display:block;}
+    .footer{margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);
+            display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:12px;}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="logo">TG</div>
+      <div>
+        <h1>Daily Mood Meter — Dashboard</h1>
+        <div class="sub">Everybody can see: what I said I am, what I think you are, and the trend lines. Keep it clean, keep it funny.</div>
+      </div>
+    </div>
+    <div class="pill" id="pill">LIVE VIEW</div>
+  </div>
+
+  <div class="controls">
+    <button onclick="refresh()">REFRESH</button>
+    <button onclick="setAuto(true)">AUTO (30s)</button>
+    <button onclick="setAuto(false)">AUTO OFF</button>
+    <span class="mini" id="status"></span>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="title">
+        <div class="name">RICKY LEE</div>
+        <div class="date" id="date1"></div>
+      </div>
+      <div class="mini">Ricky Lee says he is:</div>
+      <div class="row" id="rl_self"></div>
+
+      <div class="mini" style="margin-top:10px;">Ricky Lee thinks Matthew is:</div>
+      <div class="row" id="rl_other"></div>
+
+      <div class="spark">
+        <div class="mini">Ricky Lee — 14 day trend (self)</div>
+        <svg id="rl_trend"></svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="title">
+        <div class="name">MATTHEW</div>
+        <div class="date" id="date2"></div>
+      </div>
+      <div class="mini">Matthew says he is:</div>
+      <div class="row" id="m_self"></div>
+
+      <div class="mini" style="margin-top:10px;">Matthew thinks Ricky Lee is:</div>
+      <div class="row" id="m_other"></div>
+
+      <div class="spark">
+        <div class="mini">Matthew — 14 day trend (self)</div>
+        <svg id="m_trend"></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>TRUEGRIT BRAND CO.</div>
+    <div id="apiStatus" class="bad">Endpoint not set</div>
+  </div>
+</div>
+
+<script>
+  // Paste the SAME Apps Script Web App URL you used for the entry form:
+  const ENDPOINT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+
+  // Keep the same ordering as your meter:
+  const SCORE = {
+    "Locked In": 1,
+    "Proceed With Caution": 2,
+    "System Updating…": 3,
+    "Enter At Your Own Risk": 4,
+    "Spicy Mode Activated 🌶️": 5
+  };
+
+  const COLORS = {
+    1: "var(--green)",
+    2: "var(--yellow)",
+    3: "var(--orange)",
+    4: "var(--red)",
+    5: "var(--black)"
+  };
+
+  let timer = null;
+
+  function todayStr(){
+    const d = new Date();
+    return d.toLocaleDateString(undefined, {weekday:"short", year:"numeric", month:"short", day:"numeric"});
+  }
+
+  function setDates(){
+    document.getElementById("date1").textContent = todayStr();
+    document.getElementById("date2").textContent = todayStr();
+  }
+
+  function rowHTML(mood){
+    if(!mood){
+      return `<div class="dot" style="background:transparent;"></div>
+              <div class="stack"><div class="label">—</div><div class="desc">No entry yet today.</div></div>`;
+    }
+    const sc = SCORE[mood] || 0;
+    const dotColor = COLORS[sc] || "rgba(255,255,255,.25)";
+    return `<div class="dot" style="background:${dotColor};"></div>
+            <div class="stack"><div class="label">${escapeHtml(mood)}</div><div class="desc">${descFor(mood)}</div></div>`;
+  }
+
+  function descFor(mood){
+    if(mood==="Locked In") return "Productivity levels acceptable.";
+    if(mood==="Proceed With Caution") return "May require coffee or silence.";
+    if(mood==="System Updating…") return "Responses delayed. Use simple sentences.";
+    if(mood==="Enter At Your Own Risk") return "Recommend tactical retreat.";
+    if(mood==="Spicy Mode Activated 🌶️") return "Management monitoring closely.";
+    return "";
+  }
+
+  function escapeHtml(s){
+    return (s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+  }
+
+  function drawSpark(svgId, points){
+    const svg = document.getElementById(svgId);
+    svg.innerHTML = "";
+    const w = svg.clientWidth || 500, h = 70, pad = 8;
+
+    // background line
+    const bg = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    bg.setAttribute("x1", pad); bg.setAttribute("x2", w-pad);
+    bg.setAttribute("y1", h-pad); bg.setAttribute("y2", h-pad);
+    bg.setAttribute("stroke", "rgba(255,255,255,.12)");
+    svg.appendChild(bg);
+
+    if(!points || points.length===0){
+      const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      t.setAttribute("x", pad); t.setAttribute("y", 30);
+      t.setAttribute("fill", "rgba(255,255,255,.55)");
+      t.setAttribute("font-size", "12");
+      t.textContent = "No history yet.";
+      svg.appendChild(t);
+      return;
+    }
+
+    // normalize x and y (scores 1..5)
+    const n = points.length;
+    const x = i => pad + ( (w - 2*pad) * (n===1 ? 0 : i/(n-1)) );
+    const y = sc => pad + ( (h - 2*pad) * ((sc-1)/4) ); // 1 at top-ish? invert:
+    const yInv = sc => (h-pad) - ( (h - 2*pad) * ((sc-1)/4) );
+
+    let d = "";
+    points.forEach((p, i)=>{
+      const sc = p.score;
+      const xi = x(i);
+      const yi = yInv(sc);
+      d += (i===0 ? "M" : "L") + xi + " " + yi + " ";
+    });
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", d.trim());
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "rgba(255,255,255,.75)");
+    path.setAttribute("stroke-width", "2");
+    svg.appendChild(path);
+
+    points.forEach((p,i)=>{
+      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      c.setAttribute("cx", x(i));
+      c.setAttribute("cy", yInv(p.score));
+      c.setAttribute("r", "3.5");
+      c.setAttribute("fill", "rgba(255,255,255,.9)");
+      svg.appendChild(c);
+    });
+  }
+
+  async function refresh(){
+    const status = document.getElementById("status");
+    if(!ENDPOINT_URL || ENDPOINT_URL.includes("PASTE_YOUR")){
+      status.innerHTML = "<span class='bad'>Endpoint not set yet.</span>";
+      return;
+    }
+    status.textContent = "Loading…";
+    try{
+      const url = ENDPOINT_URL + "?action=dashboard&days=14&_=" + Date.now();
+      const resp = await fetch(url, {method:"GET", mode:"cors"});
+      const data = await resp.json();
+
+      // Today
+      document.getElementById("rl_self").innerHTML = rowHTML(data.today?.ricky_lee?.self_mood);
+      document.getElementById("rl_other").innerHTML = rowHTML(data.today?.ricky_lee?.other_mood_guess);
+      document.getElementById("m_self").innerHTML = rowHTML(data.today?.matthew?.self_mood);
+      document.getElementById("m_other").innerHTML = rowHTML(data.today?.matthew?.other_mood_guess);
+
+      // Trends (self only)
+      drawSpark("rl_trend", (data.history?.ricky_lee_self || []).map(x=>({date:x.date, score:x.score})));
+      drawSpark("m_trend", (data.history?.matthew_self || []).map(x=>({date:x.date, score:x.score})));
+
+      status.innerHTML = "<span class='ok'>Updated ✅</span>";
+    }catch(e){
+      status.innerHTML = "<span class='bad'>Error: "+ (e.message||e) +"</span>";
+    }
+  }
+
+  function setAuto(on){
+    const status = document.getElementById("status");
+    if(on){
+      if(timer) clearInterval(timer);
+      timer = setInterval(refresh, 30000);
+      status.innerHTML = "<span class='ok'>Auto refresh ON</span>";
+    }else{
+      if(timer) clearInterval(timer);
+      timer = null;
+      status.innerHTML = "Auto refresh OFF";
+    }
+  }
+
+  setDates();
+  document.getElementById("apiStatus").textContent =
+    (ENDPOINT_URL && !ENDPOINT_URL.includes("PASTE_YOUR")) ? "Endpoint set" : "Endpoint not set";
+  document.getElementById("apiStatus").className =
+    (ENDPOINT_URL && !ENDPOINT_URL.includes("PASTE_YOUR")) ? "ok" : "bad";
+  refresh();
+</script>
+</body>
+</html>
