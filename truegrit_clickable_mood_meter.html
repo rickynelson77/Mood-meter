@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TrueGrit Daily Mood Meter</title>
+  <style>
+    :root{
+      --bg:#0b0b0b;
+      --card:#121212;
+      --ink:#eaeaea;
+      --muted:#b9b9b9;
+      --line:#2a2a2a;
+      --accent:#ffffff;
+      --green:#2ecc71;
+      --yellow:#f1c40f;
+      --orange:#e67e22;
+      --red:#e74c3c;
+      --black:#333333;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; background:radial-gradient(1200px 700px at 20% 0%, #1b1b1b, var(--bg));
+      color:var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      letter-spacing:.2px;
+    }
+    .wrap{max-width:980px; margin:0 auto; padding:22px 14px 40px;}
+    .brand{
+      display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px;
+      opacity:.98;
+    }
+    .brand .left{display:flex; align-items:center; gap:12px;}
+    .logo{
+      width:44px; height:44px; border:1px solid #2b2b2b; border-radius:10px;
+      display:grid; place-items:center; background:#0f0f0f;
+      font-weight:900; letter-spacing:1px;
+    }
+    .brand h1{font-size:18px; margin:0; text-transform:uppercase; letter-spacing:2px;}
+    .sub{margin:4px 0 0; color:var(--muted); font-size:12px;}
+    .grid{display:grid; grid-template-columns:1fr; gap:14px;}
+    @media (min-width: 860px){ .grid{grid-template-columns:1fr 1fr;} }
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px; padding:16px; box-shadow:0 10px 26px rgba(0,0,0,.35);
+    }
+    .title{
+      display:flex; align-items:flex-end; justify-content:space-between; gap:10px; margin-bottom:10px;
+      border-bottom:1px solid rgba(255,255,255,.08); padding-bottom:10px;
+    }
+    .title .name{font-size:20px; font-weight:900; letter-spacing:2px; text-transform:uppercase;}
+    .title .date{font-size:12px; color:var(--muted)}
+    .meter{display:flex; flex-direction:column; gap:10px; margin-top:10px;}
+    .row{
+      display:grid; grid-template-columns:36px 1fr; gap:12px; align-items:center;
+      padding:10px; border-radius:14px; border:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.18);
+      cursor:pointer; user-select:none;
+      transition:transform .06s ease, border-color .2s ease, background .2s ease;
+    }
+    .row:hover{transform:translateY(-1px); border-color:rgba(255,255,255,.18)}
+    .dot{
+      width:26px; height:26px; border-radius:999px; border:2px solid rgba(255,255,255,.25);
+      box-shadow:0 0 0 3px rgba(0,0,0,.35) inset;
+    }
+    .label{font-weight:800; letter-spacing:.3px;}
+    .desc{color:var(--muted); font-size:12px; margin-top:2px;}
+    .row.selected{
+      border-color: rgba(255,255,255,.35);
+      background: rgba(255,255,255,.05);
+      box-shadow:0 0 0 2px rgba(255,255,255,.06) inset;
+    }
+    .pill{
+      font-size:11px; color:#111; font-weight:900; padding:6px 10px; border-radius:999px; background:var(--accent);
+      letter-spacing:1px; text-transform:uppercase;
+    }
+    .controls{display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; align-items:center;}
+    button{
+      appearance:none; border:1px solid rgba(255,255,255,.16); background:#141414; color:var(--ink);
+      padding:10px 12px; border-radius:12px; font-weight:800; letter-spacing:.5px; cursor:pointer;
+    }
+    button:hover{border-color:rgba(255,255,255,.28)}
+    button.primary{background:#ffffff; color:#0a0a0a; border-color:#ffffff;}
+    .note{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.35;}
+    .footer{
+      margin-top:18px; padding-top:14px; border-top:1px solid rgba(255,255,255,.08);
+      display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; color:var(--muted); font-size:12px;
+    }
+    .ok{color:#7CFC90}
+    .bad{color:#ff8f8f}
+    .mini{font-size:11px; color:var(--muted)}
+    .sectionHead{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+    .sectionHead h2{margin:0; font-size:14px; letter-spacing:1.6px; text-transform:uppercase;}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="left">
+      <div class="logo">TG</div>
+      <div>
+        <h1>Daily Mood Meter</h1>
+        <div class="sub">Tap to set your mood and your read on the other guy. Clean. Funny. Logged.</div>
+      </div>
+    </div>
+    <div class="pill" id="modePill">NEUTRAL DEFAULT</div>
+  </div>
+
+  <div class="grid">
+    <div class="card" id="card1">
+      <div class="title">
+        <div class="name" id="name1">RICKY LEE</div>
+        <div class="date" id="date1"></div>
+      </div>
+
+      <div class="sectionHead">
+        <h2>Ricky Lee says he is</h2>
+        <div class="mini" id="selSelf1">—</div>
+      </div>
+      <div class="meter" id="selfMeter1"></div>
+
+      <div class="sectionHead" style="margin-top:14px;">
+        <h2>Ricky Lee thinks Matthew is</h2>
+        <div class="mini" id="selOther1">—</div>
+      </div>
+      <div class="meter" id="otherMeter1"></div>
+
+      <div class="controls">
+        <button class="primary" onclick="submitFor('Ricky Lee')">SUBMIT</button>
+        <button onclick="clearFor('Ricky Lee')">CLEAR</button>
+        <span class="mini" id="status1"></span>
+      </div>
+      <div class="note">Pro tip: keep it playful. This is for laughs + awareness, not ammo. 🙂</div>
+    </div>
+
+    <div class="card" id="card2">
+      <div class="title">
+        <div class="name" id="name2">MATTHEW</div>
+        <div class="date" id="date2"></div>
+      </div>
+
+      <div class="sectionHead">
+        <h2>Matthew says he is</h2>
+        <div class="mini" id="selSelf2">—</div>
+      </div>
+      <div class="meter" id="selfMeter2"></div>
+
+      <div class="sectionHead" style="margin-top:14px;">
+        <h2>Matthew thinks Ricky Lee is</h2>
+        <div class="mini" id="selOther2">—</div>
+      </div>
+      <div class="meter" id="otherMeter2"></div>
+
+      <div class="controls">
+        <button class="primary" onclick="submitFor('Matthew')">SUBMIT</button>
+        <button onclick="clearFor('Matthew')">CLEAR</button>
+        <span class="mini" id="status2"></span>
+      </div>
+      <div class="note">This page can be duplicated into two separate links later (one per guy) for cleaner UX.</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>TRUEGRIT BRAND CO.</div>
+    <div id="apiStatus" class="bad">Endpoint not set</div>
+  </div>
+</div>
+
+<script>
+  // 1) Paste your Google Apps Script Web App URL here (after you deploy it):
+  const ENDPOINT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+
+  // Mood options (keep identical to your graphic)
+  const MOODS = [
+    {key:"Locked In", desc:"Productivity levels acceptable.", color:"var(--green)"},
+    {key:"Proceed With Caution", desc:"May require coffee or silence.", color:"var(--yellow)"},
+    {key:"System Updating…", desc:"Responses delayed. Use simple sentences.", color:"var(--orange)"},
+    {key:"Enter At Your Own Risk", desc:"Recommend tactical retreat.", color:"var(--red)"},
+    {key:"Spicy Mode Activated 🌶️", desc:"Management monitoring closely.", color:"var(--black)"},
+  ];
+
+  const state = {
+    "Ricky Lee": { self:null, other:null },
+    "Matthew": { self:null, other:null }
+  };
+
+  // Subtle click sound
+  function clickSound(){
+    try{
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "square";
+      o.frequency.value = 540;
+      g.gain.value = 0.02;
+      o.connect(g); g.connect(ctx.destination);
+      o.start();
+      setTimeout(()=>{ o.stop(); ctx.close(); }, 40);
+    }catch(e){}
+  }
+
+  function todayStr(){
+    const d = new Date();
+    return d.toLocaleDateString(undefined, {weekday:"short", year:"numeric", month:"short", day:"numeric"});
+  }
+
+  function setDates(){
+    document.getElementById("date1").textContent = todayStr();
+    document.getElementById("date2").textContent = todayStr();
+  }
+
+  function mkRow(mood, selected, onClick){
+    const row = document.createElement("div");
+    row.className = "row" + (selected ? " selected" : "");
+    row.onclick = onClick;
+
+    const dot = document.createElement("div");
+    dot.className = "dot";
+    dot.style.background = mood.color;
+
+    const text = document.createElement("div");
+    const label = document.createElement("div");
+    label.className = "label";
+    label.textContent = mood.key;
+    const desc = document.createElement("div");
+    desc.className = "desc";
+    desc.textContent = mood.desc;
+    text.appendChild(label); text.appendChild(desc);
+
+    row.appendChild(dot); row.appendChild(text);
+    return row;
+  }
+
+  function renderMeters(){
+    // Ricky Lee card
+    renderFor("Ricky Lee", "selfMeter1", "otherMeter1", "selSelf1", "selOther1");
+    // Matthew card
+    renderFor("Matthew", "selfMeter2", "otherMeter2", "selSelf2", "selOther2");
+  }
+
+  function renderFor(person, selfId, otherId, selSelfId, selOtherId){
+    const selfWrap = document.getElementById(selfId);
+    const otherWrap = document.getElementById(otherId);
+    selfWrap.innerHTML = ""; otherWrap.innerHTML = "";
+
+    MOODS.forEach((m, idx)=>{
+      selfWrap.appendChild(mkRow(m, state[person].self===idx, ()=>{
+        clickSound();
+        state[person].self = idx;
+        renderMeters();
+      }));
+    });
+
+    MOODS.forEach((m, idx)=>{
+      otherWrap.appendChild(mkRow(m, state[person].other===idx, ()=>{
+        clickSound();
+        state[person].other = idx;
+        renderMeters();
+      }));
+    });
+
+    document.getElementById(selSelfId).textContent =
+      state[person].self===null ? "—" : "Selected: " + MOODS[state[person].self].key;
+
+    document.getElementById(selOtherId).textContent =
+      state[person].other===null ? "—" : "Selected: " + MOODS[state[person].other].key;
+  }
+
+  async function submitFor(person){
+    const statusEl = person==="Ricky Lee" ? document.getElementById("status1") : document.getElementById("status2");
+    const you = person;
+    const other = person==="Ricky Lee" ? "Matthew" : "Ricky Lee";
+
+    if(state[person].self===null || state[person].other===null){
+      statusEl.innerHTML = "<span class='bad'>Pick BOTH moods first.</span>";
+      return;
+    }
+    if(!ENDPOINT_URL || ENDPOINT_URL.includes("PASTE_YOUR")){
+      statusEl.innerHTML = "<span class='bad'>Endpoint not set yet.</span>";
+      return;
+    }
+
+    statusEl.textContent = "Submitting…";
+    const payload = {
+      timestamp: new Date().toISOString(),
+      person: you,
+      self_mood: MOODS[state[person].self].key,
+      other_person: other,
+      other_mood_guess: MOODS[state[person].other].key,
+      tz: Intl.DateTimeFormat().resolvedOptions().timeZone || ""
+    };
+
+    try{
+      const resp = await fetch(ENDPOINT_URL, {
+        method:"POST",
+        mode:"cors",
+        headers: {"Content-Type":"text/plain;charset=utf-8"},
+        body: JSON.stringify(payload)
+      });
+      const text = await resp.text();
+      statusEl.innerHTML = resp.ok ? "<span class='ok'>Logged ✅</span>" : "<span class='bad'>Error: "+text+"</span>";
+    }catch(e){
+      statusEl.innerHTML = "<span class='bad'>Error: "+ (e.message || e) +"</span>";
+    }
+  }
+
+  function clearFor(person){
+    clickSound();
+    state[person].self = null;
+    state[person].other = null;
+    if(person==="Ricky Lee"){ document.getElementById("status1").textContent=""; }
+    else { document.getElementById("status2").textContent=""; }
+    renderMeters();
+  }
+
+  // Init
+  setDates();
+  renderMeters();
+  document.getElementById("apiStatus").textContent =
+    (ENDPOINT_URL && !ENDPOINT_URL.includes("PASTE_YOUR")) ? "Endpoint set" : "Endpoint not set";
+  document.getElementById("apiStatus").className =
+    (ENDPOINT_URL && !ENDPOINT_URL.includes("PASTE_YOUR")) ? "ok" : "bad";
+</script>
+</body>
+</html>
